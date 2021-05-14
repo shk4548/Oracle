@@ -1,4 +1,4 @@
--- System 계정
+﻿-- System 계정
 -- C## 없이 기존 방식대로 사용자 생성
 ALTER SESSION SET "_ORACLE_SCRIPT" = true;
 
@@ -96,7 +96,7 @@ FROM employees;
 -- 급여가 15000이상인 사원의 이름과 연봉
 SELECT first_name, salary * 12 "Annual Salary"
 FROM employees
-WHERE salary >= 15000;
+WHERE salary >= 15001;
 
 -- 07/01/01 이후 입사한 사원의 이름과 입사일
 SELECT first_name, hire_date
@@ -114,5 +114,5 @@ SELECT * FROM employees
 WHERE department_id = 10;
 
 -- 논리 조합
--- 급여가 14000이하 or 17000이상인 사원의 이름과 급여
+-- 급여가 14000이하 or 170000이상인 사원의 이름과 급여
 SELECT 
