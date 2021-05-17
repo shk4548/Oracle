@@ -1,160 +1,104 @@
----------
--- 사용자 관련
----------
--- SYSTEM 계정으로 수행
--- CREATE (생성), ALTER (수정), DROP (삭제) 키워드
+--------------------
+-- CUD (Create, Update, Delete)
+--------------------
 
--- 사용자 생성
-CREATE USER C##KIMSH IDENTIFIED BY 1234;
--- 사용자 비밀번호 변경
-ALTER USER C##KIMSH IDENTIFIED BY test;
--- 사용자 삭제
-DROP USER C##KIMSH;
-
---경우에 따라 내부에 테이블 등 데이터 베이스 객체가 생성된 사용자
-DROP USER C##KIMSH CASCADE; -- 폭포수
-
--- 다시 사용자 만들자
-CREATE USER C##KIMSH IDENTIFIED BY 1234;
--- SQLPlus로 접속 시도
-
--- 사용자 생성을 하여도 권한이 부여되지 않으면 아무 일도 할 수 없다.
-
---사용자 정보의 확인
--- USER_USERS: 현재 상요자 관련 정보
--- ALL_USERS: 전체 사용자 정보
--- DBA_USERS: 모든 사용자의 상세 정보(DBA 전용)
-
-DESC USER_USERS;
-SELECT * FROM USER_USERS;
-
-DESC ALL_USERS;
-SELECT * FROM ALL_USERS;
-
-DESC DBA_USERS;
-SELECT * FROM DBA_USERS;
-
--- 사용자 계정에게 접속 권한 부여
-GRANT create session TO C##KIMSH;
-
--- 일반적으로 데이터베이스 접속, 테이블 만들어 사용하려면 
--- CONNECT, RESOURCE 룰을 부여 
-GRANT CONNECT, RESOURCE TO C##KIMSH;
-
--- ORACLE 12이상에서는 사용자 테이블 스페이스에 공간 부여 필요
-ALTER USER C##KIMSH DEFAULT TABLESPACE USERS QUOTA unlimited ON users;
-
--- 시스템 권한의 부여
--- GRANT 권한(역할)명 TO 사용자;
--- 시스템 권한의 박탈
--- REVOKE 권한(역할) 명 FROM 사용자;
-
--- 스키마 객체에 대한 권환의 부여
--- GRANT 권한 ON 객체 TO 사용자;
--- 스키마 객체 권한의 박탈
--- REVOKE 권한 ON 객체 FROM 사용자;
-GRANT select ON hr.employees TO c##KIMSH;
-GRANT select ON hr.departments TO C##KIMSH;
-
--- 이하, 사용자 계정으로 수행
-SELECT * FROM HR.employees;
-SELECT * FROM HR.departments;
-
--- System 계정으로 hr.department의 select 권한 회수
-REVOKE select ON HR.departments FROM C##KIMSH
-
--- 다시 사용자 계정으로 확인
-SELECT * FROM hr.departments;
-
--------------------
--- DDL
--------------------
-CREATE TABLE book ( --  컬럼의 정의
-    book_id NUMBER(5),  --  5자리 정수타입 -> PK로 변경할 예정
-    title VARCHAR2(50), --  50자리 가변 문자열
-    author VARCHAR2(10),    --  10자리 가변문자열
-    pub_date DATE DEFAULT sysdate   -- 날짜 타입(기본값 - 현재 날짜와 시간)
-);
-DESC book;
-
--- 서브 쿼리를 이용한 새 테이블 생성
--- hr.employees 테이블에서 일부 데이터를 추출, 새 테이블 만들어 봅시다
-SELECT * FROM hr.employees WHERE job_id LIKE 'IT_%'; -- 서브쿼리 결과로 새 테이블 생성
-
-CREATE TABLE it_emp AS (
-    SELECT * FROM hr.employees 
-    WHERE job_id LIKE 'IT_%'
-);
-
-DESC it_emp;
-SELECT * FROM it_emp;
-
--- 내가 가진 테이블의 목록
-SELECT * FROM tab;
-
--- 테이블 삭제
-DROP TABLE it_emp;
-SELECT * FROM tab;
--- 휴지통 비우기
-PURGE RECYCLEBIN;
-SELECT * FROM tab;
-
-DESC book;
-
--- 테이블 추가
-CREATE TABLE author (
-    author_id NUMBER(10),
-    author_name VARCHAR2(100) NOT NULL, --  컬럼 제약 조건 NOT NULL
-    author_desc VARCHAR2(500),
-    PRIMARY KEY (author_id) --  테이블 제약 조건
-);
-DESC book;
 DESC author;
 
--- book 테이블의 author 컬럼을 삭제
--- 나중에 author 테이블과 연결
-ALTER TABLE book DROP COLUMN author;
+-- INSERT: 테이블에 새 데이터 추가
+-- 데이터를 넣을 컬럼을 지정하지 않으면 전체 데이터를 제공
+-- 테이블 정의시 지정한 순서대로 INSERT
+INSERT INTO author
+VALUES(1, '박경리', '토지 작가');
+
+-- 특정 컬럼의 내용만 입력할 때는 컬럼의 목록 지정
+INSERT INTO author (author_id, author_name)
+VALUES(2, '김영하');
+
+SELECT * FROM author;
+
+COMMIT; --  변경 사항 커밋
+
+INSERT INTO author (author_id, author_name)
+VALUES(3, '스티븐 킹');
+
+SAVEPOINT a;
+SELECT * FROM author;
+
+INSERT INTO author (author_id, author_name)
+VALUES(4, '톨스토이');
+
+SELECT * FROM author;
+ROLLBACK TO a;  --   Savepoint a로 복구
+SELECT * FROM author;
+
+ROLLBACK;   --  트랜잭션 시작 위치로 복구
+SELECT * FROM author;
+
 DESC book;
+INSERT INTO book 
+VALUES(1, '토지', sysdate, 1);
 
--- author.author_id를 참조하기 위한 author_id 컬럼을 book테이블에 추가
-ALTER TABLE book ADD (author_id NUMBER(10));
-DESC book;
+INSERT INTO book (book_id, title, author_id)
+VALUES(2, '살인자의 기억법', 2);
 
--- book.book_id를 NUMBER(10)으로 바꿔 봅니다
-ALTER TABLE book MODIFY (book_id NUMBER(10));
-DESC book;
+--  무결성 제약 조건을 위반한 레코드는 삽입되지 않는다.
+INSERT INTO book (book_id, title, author_id)
+VALUES(3, '쇼생크 탈출', 3);
 
--- book.author_id -> author.author_id를 참조 하도록 변경(FK)
-ALTER TABLE book
-ADD CONSTRAINT
-    fk_author_id FOREIGN KEY(author_id) 
-                    REFERENCES author(author_id);
--- book 테이블의 author_id 컬럼에
---      author테이블의 author_id(PK)를 참조하는 외래 키(FK) 추가
-DESC book;
+SELECT * FROM book;
+COMMIT;
 
+-- UPDATE 테이블명 Set 컬럼명=값, 컬럼명=값
+UPDATE author SET author_desc='알쓸신잡 출연';
+SELECT * FROM author;
 
--------------------
--- DATA DICTIONARY
--------------------
--- 오라클이 관리하는 데이터베이스 관련 정보들을 특별한 용도의 테이블
--- USER_ : 현재 로그인한 사용자 레벨의 객체들
--- ALL_ : 사용자 전체 대상의 정보
--- DBA_ : 데이터베이스 전체에 관련된 정보들(관리자 전용)
+-- WHERE 절을 명시하지 않으면 모든 레코드가 변경
+ROLLBACK;
+UPDATE author SET author_desc='알쓸신잡 출연'
+WHERE author_id=2;
 
--- 모든 딕셔너리 확인
-SELECT * FROM DICTIONARY;
+SELECT * FROM author;
 
--- 사용자 스키마 객체 확인: USER_OBJECTS
-SELECT * FROM USER_OBJECTS;
-SELECT * object_name, object_type FROM USER_OBJECTS;
+-- 연습
+-- hr.employees 테이블로부터 department_id가 10, 20, 30인 사람들만 
+-- 새 테이블로 생성
+CREATE TABLE emp123 AS
+    ( SELECT * FROM hr.employees
+        WHERE department_id IN (10, 20, 30));
+DESC emp123;
+SELECT first_name, salary, department_id FROM emp123;
 
--- 내가 가진 제약조건 : USER_CONSTRAINTS
-SELECT * FROM USER_CONSTRAINTS;
+-- 부서가 30인 직원들의 급여를 10% 인상해 줍시다.
+UPDATE emp123
+SET salary = salary + salary * 0.1
+WHERE department_id=30;
+SELECT first_name, salary, department_id, job_id FROM emp123;
 
--- BOOK 테이블에 걸려있는 제약조건 확인
-SELECT constraint_name,
-    constraint_type,
-    search_condition
-FROM USER_CONSTRAINTS
-WHERE table_name ='BOOK';
+ROLLBACK;
+
+-- DELETE : 테이블로부터 레코드 삭제
+SELECT * FROM emp123;
+DELETE FROM emp123;
+--  WHERE 절 없이 DELETE 수행하면 모든 레코드 삭제
+ROLLBACK;
+
+SELECT * FROM emp123;
+
+-- emp123으로부터 job_id가 PU_로 시작되는 레코드 삭제
+DELETE FROM emp123
+WHERE job_id LIKE 'PU_%';
+
+SELECT * FROM emp123;
+ROLLBACK;
+
+-- DELETE vs TRUNCATE
+-- DELETE : Transaction의 대상 -> ROLLBACK;
+-- TRUNCATE : Transaction의 대상이 아님 -> ROLLBACK 불가
+DELETE FROM emp123;
+SELECT * FROM emp123;
+ROLLBACK;
+
+TRUNCATE TABLE emp123;
+SELECT * FROM emp123;
+ROLLBACK;   --  TRUNCATE는 롤백의 대상이 아니다
+SELECT * FROM emp123; 
